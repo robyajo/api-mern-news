@@ -1,4 +1,5 @@
 import swaggerJsdoc from 'swagger-jsdoc'
+import path from 'path'
 
 const options = {
   definition: {
@@ -10,7 +11,12 @@ const options = {
     },
     servers: [
       {
+        url: 'http://localhost:4000/api/v1',
+        description: 'V1 API Server'
+      },
+      {
         url: 'http://localhost:4000',
+        description: 'Root Server'
       },
     ],
     components: {
@@ -28,7 +34,10 @@ const options = {
       },
     ],
   },
-  apis: ['./src/routes/*.ts', './src/controllers/*.ts'], 
+  apis: [
+    path.join(__dirname, './routes/*.ts'),
+    path.join(__dirname, './controllers/*.ts')
+  ], 
 }
 
 export const specs = swaggerJsdoc(options)

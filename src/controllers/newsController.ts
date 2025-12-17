@@ -3,6 +3,8 @@ import { prisma } from '../prisma'
 import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 import slugify from 'slugify'
+import { notifyUser } from '../realtime'
+import { getCache, setCache, delCache } from '../redis'
 
 const createSchema = z.object({
   title: z.string().min(1),
@@ -19,21 +21,51 @@ const serializeBigInt = (data: any): any => {
 }
 
 export async function listPublic(_req: Request, res: Response) {
+  const cacheKey = 'news:public'
+  const cached = await getCache(cacheKey)
+  if (cached) {
+    res.json(cached)
+    return
+  }
   const items = await prisma.posts.findMany({ 
-    where: { status: 'active' }, 
+    where: { status: 'published' }, 
     orderBy: { created_at: 'desc' },
     include: { users: { select: { name: true } } }
   })
-  res.json(serializeBigInt(items))
+  const payload = serializeBigInt(items)
+  await setCache(cacheKey, payload, 60)
+  res.json(payload)
+}
+
+export async function getById(req: Request, res: Response) {
+  const id = Number(req.params.id)
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ error: 'Invalid id' })
+    return
+  }
+  const item = await prisma.posts.findUnique({ where: { id: BigInt(id) } })
+  if (!item) {
+    res.status(404).json({ error: 'Not found' })
+    return
+  }
+  res.json(serializeBigInt(item))
 }
 
 export async function listMine(req: Request, res: Response) {
   const user = (req as any).user as { userId: string; role: string }
+  const cacheKey = `news:mine:${user.userId}`
+  const cached = await getCache(cacheKey)
+  if (cached) {
+    res.json(cached)
+    return
+  }
   const items = await prisma.posts.findMany({ 
     where: { user_id: BigInt(user.userId) }, 
     orderBy: { created_at: 'desc' } 
   })
-  res.json(serializeBigInt(items))
+  const payload = serializeBigInt(items)
+  await setCache(cacheKey, payload, 60)
+  res.json(payload)
 }
 
 async function getOrCreateCategory(userId: bigint, name: string = 'General') {
@@ -72,11 +104,14 @@ export async function create(req: Request, res: Response) {
       name: parsed.data.title,
       slug: slug,
       content: parsed.data.content,
-      status: parsed.data.published ? 'active' : 'draft',
+      status: parsed.data.published ? 'published' : 'draft',
       created_at: new Date(),
       updated_at: new Date()
     }
   })
+  await delCache('news:public')
+  await delCache(`news:mine:${user.userId}`)
+  notifyUser(user.userId, 'post:created', serializeBigInt(item))
   res.status(201).json(serializeBigInt(item))
 }
 
@@ -116,10 +151,13 @@ export async function update(req: Request, res: Response) {
     data.slug = slugify(parsed.data.title, { lower: true }) + '-' + existing.uuid.slice(0, 8)
   }
   if (parsed.data.content) data.content = parsed.data.content
-  if (parsed.data.published !== undefined) data.status = parsed.data.published ? 'active' : 'draft'
+  if (parsed.data.published !== undefined) data.status = parsed.data.published ? 'published' : 'draft'
   data.updated_at = new Date()
 
   const item = await prisma.posts.update({ where: { id: BigInt(id) }, data })
+  await delCache('news:public')
+  await delCache(`news:mine:${user.userId}`)
+  notifyUser(user.userId, 'post:updated', serializeBigInt(item))
   res.json(serializeBigInt(item))
 }
 
@@ -142,6 +180,8 @@ export async function remove(req: Request, res: Response) {
     return
   }
   await prisma.posts.delete({ where: { id: BigInt(id) } })
+  await delCache('news:public')
+  await delCache(`news:mine:${user.userId}`)
+  notifyUser(user.userId, 'post:deleted', { id })
   res.status(204).end()
 }
-

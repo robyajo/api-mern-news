@@ -6,6 +6,8 @@ export default defineConfig({
     path: 'prisma/migrations',
     seed: 'ts-node prisma/seed.ts'
   },
-  datasource: { url: env('DATABASE_URL') }
+  datasource: { 
+    url: env('DATABASE_URL'),
+    shadowDatabaseUrl: env('SHADOW_DATABASE_URL')
+  }
 })
-

@@ -1,214 +1,152 @@
 # News API (Express + TypeScript + Prisma)
 
-- Backend API untuk aplikasi berita dengan autentikasi JWT, CRUD posts, komentar, kategori, dan dokumentasi Swagger.
-- Menggunakan Prisma v7 dengan dukungan PostgreSQL (default) dan MySQL opsional.
+Backend API untuk aplikasi berita modern dengan autentikasi JWT, CRUD lengkap, caching performa tinggi, dan notifikasi real-time.
 
-## Fitur
+## 🚀 Fitur Utama
 
-- Autentikasi JWT: register, login.
-- CRUD Posts: list publik, list milik user, create/update/delete.
-- Komentar dan kategori (terintegrasi dengan skema DB yang ada).
-- Swagger UI untuk mencoba API via web di `/api-docs`.
+- **Autentikasi & Otorisasi**:
+  - Register & Login dengan JWT (7 hari expiry).
+  - Role-based Access Control (USER vs ADMIN).
+  - Password hashing dengan `bcryptjs`.
+- **Manajemen Konten (CRUD)**:
+  - Berita/Posts (Judul, Konten, Thumbnail, Slug).
+  - Kategori & Komentar.
+  - Pagination & Search.
+- **Performa Tinggi**:
+  - **Caching**: Menggunakan Redis (opsional fallback ke In-Memory) untuk endpoint publik.
+  - **Database Optimization**: Prisma v7 dengan adapter dinamis (PostgreSQL, MySQL/MariaDB, SQLite).
+- **Real-time**:
+  - Notifikasi via **Socket.IO** saat ada berita baru atau update.
+- **Developer Experience**:
+  - **Swagger UI**: Dokumentasi API interaktif di `/api-docs`.
+  - **TypeScript**: Type-safety di seluruh kode.
+  - **MVC Architecture**: Struktur kode yang rapi dan modular.
+  - **Docker Ready**: Setup database dan Redis instan dengan Docker Compose.
 
-## Stack
+## 🛠️ Tech Stack
 
-- Node.js + Express + TypeScript
-- Prisma ORM v7
-- PostgreSQL (default) atau MySQL (opsional)
-- Swagger UI + swagger-jsdoc
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **ORM**: Prisma v7 (Dynamic Adapters)
+- **Database**: PostgreSQL (Default), MySQL/MariaDB (Supported)
+- **Caching**: Redis / In-Memory
+- **Real-time**: Socket.IO
+- **Validation**: Zod
+- **Documentation**: Swagger / OpenAPI 3.0
 
-## Paket yang Digunakan
+## 📦 Persiapan & Instalasi
 
-- Runtime
-  - `express`: HTTP server.
-  - `cors`: Middleware CORS.
-  - `dotenv`: Memuat variabel lingkungan dari `.env`.
-  - `jsonwebtoken`: JWT untuk autentikasi.
-  - `bcryptjs`: Hashing password.
-  - `zod`: Validasi input.
-  - `swagger-ui-express` + `swagger-jsdoc`: Dokumentasi API interaktif.
-  - `@prisma/client`: Prisma Client yang dihasilkan.
-  - `pg`, `mysql2`: Driver database untuk PostgreSQL/MySQL.
-  - `@prisma/adapter-pg`, `@prisma/adapter-mariadb`, `@prisma/adapter-better-sqlite3`: Adapter Prisma v7 sesuai provider.
-  - `better-sqlite3`: Driver SQLite untuk adapter terkait.
-  - `uuid`: Pembuatan UUID.
-  - `slugify`: Pembuatan slug ramah URL.
-- Pengembangan
-  - `typescript`: Bahasa/kompiler TypeScript.
-  - `ts-node`, `ts-node-dev`: Menjalankan TypeScript tanpa build dan hot-reload dev.
-  - `prisma`: CLI untuk generate/migrate/db pull/seed.
-  - `@types/*`: Definisi tipe untuk Node/Express/CORS/JWT/PG/Swagger/UUID/SQLite/Bcrypt.
+### 1. Prasyarat
 
-## Tahapan Instalasi Paket & TypeScript
+- Node.js (v18+)
+- Docker & Docker Compose (Disarankan untuk Database & Redis)
 
-- Install semua paket:
-
-```bash
-npm install
-```
-
-- Pastikan TypeScript mengetahui path output Prisma Client:
-
-  - `tsconfig.json` sudah menyertakan `generated` di bagian `include`, sehingga import seperti `import { PrismaClient } from '../generated/prisma/client'` dapat dikenali.
-  - Jika mengubah lokasi output client di `schema.prisma`, sesuaikan `tsconfig.json` dan import tersebut.
-
-- Generate Prisma Client agar TypeScript dapat menggunakan tipe-tipe yang tepat:
-
-```bash
-npm run prisma:generate
-```
-
-- Bila mengubah skema database (migrate) atau menarik skema dari database (db pull), selalu jalankan ulang generate:
-
-```bash
-npx prisma db pull           # jika DB sudah ada
-npx prisma migrate dev --name init   # jika membuat skema via Prisma
-npm run prisma:generate
-```
-
-- Jalankan pengecekan tipe dan build:
-
-```bash
-npm run typecheck
-npm run build
-npm start
-```
-
-## Struktur Proyek
-
-- `src/index.ts`: Entrypoint server.
-- `src/server.ts`: Inisialisasi Express dan routing.
-- `src/routes/*`: Routing API.
-- `src/controllers/*`: Logic endpoint.
-- `src/middleware/*`: Middleware auth dan error.
-- `src/prisma.ts`: Inisialisasi Prisma Client dengan adapter dinamis.
-- `prisma/schema.prisma`: Skema Prisma (sinkron dengan DB Anda).
-- `prisma.config.ts`: Konfigurasi Prisma v7 (datasource & seed).
-- `prisma/seed.ts`: Seeder data awal.
-- `.env`: Konfigurasi environment.
-
-## Prasyarat
-
-- Node.js 18+ dan npm.
-- Database berjalan:
-  - PostgreSQL: buat database, misal `db_magazine`.
-  - MySQL (opsional): jika ingin pakai MySQL, siapkan kredensial.
-
-## Instalasi
-
-- Clone repo dan masuk ke folder `api-news`.
-- Install dependencies:
+### 2. Instalasi Dependensi
 
 ```bash
 npm install
 ```
 
-- Salin `.env.example` menjadi `.env` dan ubah sesuai lingkungan Anda:
+### 3. Setup Environment
+
+Salin file `.env.example` ke `.env` dan sesuaikan konfigurasi:
 
 ```env
+# Server
 PORT=4000
+JWT_SECRET=rahasia_negara_api_news
+
+# Database (PostgreSQL via Docker pada port 5433)
+DATABASE_URL="postgresql://postgres:postgres@localhost:5433/db_magazine?schema=public"
+SHADOW_DATABASE_URL="postgresql://postgres:postgres@localhost:5433/db_magazine_shadow?schema=public"
+
+# Database Provider (postgresql / mysql / sqlite)
 DATABASE_PROVIDER="postgresql"
-DATABASE_URL="postgresql://<USER>:<PASSWORD>@127.0.0.1:5432/db_magazine?schema=public"
-JWT_SECRET="dev_secret_change_me"
+
+# Redis (Opsional, untuk Caching)
+REDIS_HOST="localhost"
+REDIS_PORT=6379
 ```
 
-## Konfigurasi Prisma v7
+### 4. Menjalankan Database (Docker)
 
-- Konfigurasi membaca URL dari `prisma.config.ts` dan `.env`.
-- File `schema.prisma` tidak menyimpan `url` datasource; gunakan `prisma.config.ts`.
-
-### Alur 1: Menggunakan Database yang Sudah Ada (db pull)
-
-- Jika tabel sudah ada di DB (users, posts, comments, dsb):
+Jalankan PostgreSQL dan Redis menggunakan Docker Compose:
 
 ```bash
-npx prisma db pull
+docker-compose up -d
+```
+
+_Catatan: PostgreSQL dikonfigurasi pada port **5433** untuk menghindari konflik dengan instalasi lokal._
+
+### 5. Setup Database
+
+Jalankan migrasi untuk membuat tabel:
+
+```bash
+npm run prisma:migrate
+```
+
+Generate Prisma Client:
+
+```bash
 npm run prisma:generate
 ```
 
-### Alur 2: Membuat Skema Baru (migrate)
-
-- Jika mulai dari nol dan ingin membuat tabel via Prisma:
-
-```bash
-npx prisma migrate dev --name init
-npm run prisma:generate
-```
-
-## Seeder Data
-
-- Mengisi data admin/user, kategori, posts, comments:
+(Opsional) Seed data awal:
 
 ```bash
 npx prisma db seed
 ```
 
-- Default akun:
-  - Admin: `admin@example.com` / `password123`
-  - User: `user@example.com` / `password123`
+### 6. Menjalankan Server
 
-## Menjalankan Server
-
-- Mode pengembangan:
+Mode Development (dengan Hot-Reload `nodemon`):
 
 ```bash
 npm run dev
 ```
 
-- Server berjalan di: `http://localhost:4000`
-- Swagger UI: `http://localhost:4000/api-docs`
+Mode Production:
 
-## Dokumentasi Swagger
-
-- Buka `http://localhost:4000/api-docs`.
-- Klik “Authorize” dan masukkan token JWT dari endpoint login:
-  - Format: `Bearer <token>`
-
-## Endpoint Utama
-
-- Auth
-  - `POST /auth/register`: daftar user baru.
-  - `POST /auth/login`: login, mengembalikan token JWT.
-- News
-  - `GET /news`: list publik.
-  - `GET /news/mine`: list milik user (butuh Bearer token).
-  - `POST /news`: buat post (butuh Bearer token).
-  - `PUT /news/{id}`: update post (butuh Bearer token).
-  - `DELETE /news/{id}`: hapus post (butuh Bearer token).
-
-## Skrip NPM Penting
-
-- `npm run dev`: Jalankan server dev.
-- `npm run build`: Build TypeScript ke `dist`.
-- `npm run start`: Jalankan hasil build.
-- `npm run typecheck`: Cek tipe TypeScript.
-- `npm run prisma:generate`: Generate Prisma Client.
-- `npm run prisma:migrate`: Migrasi skema (dev).
-- `npx prisma db seed`: Jalankan seeder.
-- `npm run prisma:studio`: Buka Prisma Studio.
-
-## Catatan DB dan Tipe Data
-
-- Skema DB Anda menggunakan `BigInt` untuk primary key; API sudah menangani serialisasi JSON agar aman.
-- Field status di `posts` memiliki check constraint (`draft` atau `published`); seeder & controller menyesuaikan.
-
-## MySQL (Opsional)
-
-- Ubah `.env`:
-
-```env
-DATABASE_PROVIDER="mysql"
-DATABASE_URL="mysql://<USER>:<PASSWORD>@127.0.0.1:3306/<DB>"
+```bash
+npm run build
+npm start
 ```
 
-- Pastikan driver `mysql2` terinstal (`npm install mysql2` — sudah ada).
-- Jalankan `npm run prisma:generate`.
+Server akan berjalan di `http://localhost:4000`.
 
-## Troubleshooting
+## 📚 Dokumentasi API
 
-- Error adapter tidak cocok:
-  - Pastikan `DATABASE_PROVIDER` sesuai dengan DB yang dipakai.
-- Error unik/sequence:
-  - Jalankan seeder; script akan mencoba merapikan sequence ID di PostgreSQL.
-- Token JWT invalid:
-  - Pastikan gunakan token dari `POST /auth/login` dan isi di Swagger “Authorize”.
+Akses dokumentasi lengkap dan coba API langsung melalui Swagger UI:
+👉 **http://localhost:4000/api-docs**
+
+## 📂 Struktur Proyek
+
+```
+api-news/
+├── prisma/                 # Konfigurasi Database & Schema
+│   ├── schema.prisma       # Definisi Tabel
+│   ├── migrations/         # History Migrasi
+│   └── seed.ts             # Data Awal
+├── src/
+│   ├── controllers/        # Logika Bisnis (Handler)
+│   ├── middleware/         # Auth, Error Handling, Validation
+│   ├── routes/             # Definisi Endpoint API
+│   ├── index.ts            # Entry Point
+│   ├── server.ts           # Setup Express App
+│   ├── prisma.ts           # Instance Database Client
+│   ├── redis.ts            # Konfigurasi Caching
+│   └── realtime.ts         # Konfigurasi Socket.IO
+├── docker-compose.yml      # Setup Docker (Postgres + Redis)
+└── nodemon.json            # Konfigurasi Hot-Reload
+```
+
+## 🧪 Testing & Tools
+
+- **Type Check**: `npm run typecheck`
+- **Database Studio**: `npm run prisma:studio` (GUI untuk melihat data database)
+
+---
+
+Dibuat dengan ❤️ menggunakan Express & Prisma.
