@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 import slugify from 'slugify'
 import { notifyUser } from '../realtime'
 import { getCache, setCache, delCache } from '../redis'
+import { sendSuccess, sendError } from '../response'
 
 const createSchema = z.object({
   title: z.string().min(1),
@@ -24,7 +25,7 @@ export async function listPublic(_req: Request, res: Response) {
   const cacheKey = 'news:public'
   const cached = await getCache(cacheKey)
   if (cached) {
-    res.json(cached)
+    sendSuccess(res, 200, 'List public news', cached)
     return
   }
   const items = await prisma.posts.findMany({ 
@@ -34,21 +35,21 @@ export async function listPublic(_req: Request, res: Response) {
   })
   const payload = serializeBigInt(items)
   await setCache(cacheKey, payload, 60)
-  res.json(payload)
+  sendSuccess(res, 200, 'List public news', payload)
 }
 
 export async function getById(req: Request, res: Response) {
   const id = Number(req.params.id)
   if (!Number.isFinite(id)) {
-    res.status(400).json({ error: 'Invalid id' })
+    sendError(res, 400, 'Invalid id')
     return
   }
   const item = await prisma.posts.findUnique({ where: { id: BigInt(id) } })
   if (!item) {
-    res.status(404).json({ error: 'Not found' })
+    sendError(res, 404, 'Not found')
     return
   }
-  res.json(serializeBigInt(item))
+  sendSuccess(res, 200, 'News detail', serializeBigInt(item))
 }
 
 export async function listMine(req: Request, res: Response) {
@@ -56,7 +57,7 @@ export async function listMine(req: Request, res: Response) {
   const cacheKey = `news:mine:${user.userId}`
   const cached = await getCache(cacheKey)
   if (cached) {
-    res.json(cached)
+    sendSuccess(res, 200, 'List my news', cached)
     return
   }
   const items = await prisma.posts.findMany({ 
@@ -65,7 +66,7 @@ export async function listMine(req: Request, res: Response) {
   })
   const payload = serializeBigInt(items)
   await setCache(cacheKey, payload, 60)
-  res.json(payload)
+  sendSuccess(res, 200, 'List my news', payload)
 }
 
 async function getOrCreateCategory(userId: bigint, name: string = 'General') {
@@ -87,7 +88,8 @@ async function getOrCreateCategory(userId: bigint, name: string = 'General') {
 export async function create(req: Request, res: Response) {
   const parsed = createSchema.safeParse(req.body)
   if (!parsed.success) {
-    res.status(400).json({ error: 'Invalid input' })
+    const errors = parsed.error.flatten().fieldErrors
+    sendError(res, 422, 'Validation error', errors)
     return
   }
   const user = (req as any).user as { userId: string; role: string }
@@ -112,7 +114,7 @@ export async function create(req: Request, res: Response) {
   await delCache('news:public')
   await delCache(`news:mine:${user.userId}`)
   notifyUser(user.userId, 'post:created', serializeBigInt(item))
-  res.status(201).json(serializeBigInt(item))
+  sendSuccess(res, 201, 'News created', serializeBigInt(item))
 }
 
 const updateSchema = z.object({
@@ -124,24 +126,25 @@ const updateSchema = z.object({
 export async function update(req: Request, res: Response) {
   const id = Number(req.params.id)
   if (!Number.isFinite(id)) {
-    res.status(400).json({ error: 'Invalid id' })
+    sendError(res, 400, 'Invalid id')
     return
   }
   const parsed = updateSchema.safeParse(req.body)
   if (!parsed.success) {
-    res.status(400).json({ error: 'Invalid input' })
+    const errors = parsed.error.flatten().fieldErrors
+    sendError(res, 422, 'Validation error', errors)
     return
   }
   const user = (req as any).user as { userId: string; role: string }
   const existing = await prisma.posts.findUnique({ where: { id: BigInt(id) } })
   if (!existing) {
-    res.status(404).json({ error: 'Not found' })
+    sendError(res, 404, 'Not found')
     return
   }
   
   const userIdBig = BigInt(user.userId)
   if (existing.user_id !== userIdBig && user.role !== 'admin') {
-    res.status(403).json({ error: 'Forbidden' })
+    sendError(res, 403, 'Forbidden')
     return
   }
 
@@ -158,30 +161,30 @@ export async function update(req: Request, res: Response) {
   await delCache('news:public')
   await delCache(`news:mine:${user.userId}`)
   notifyUser(user.userId, 'post:updated', serializeBigInt(item))
-  res.json(serializeBigInt(item))
+  sendSuccess(res, 200, 'News updated', serializeBigInt(item))
 }
 
 export async function remove(req: Request, res: Response) {
   const id = Number(req.params.id)
   if (!Number.isFinite(id)) {
-    res.status(400).json({ error: 'Invalid id' })
+    sendError(res, 400, 'Invalid id')
     return
   }
   const user = (req as any).user as { userId: string; role: string }
   const existing = await prisma.posts.findUnique({ where: { id: BigInt(id) } })
   if (!existing) {
-    res.status(404).json({ error: 'Not found' })
+    sendError(res, 404, 'Not found')
     return
   }
   
   const userIdBig = BigInt(user.userId)
   if (existing.user_id !== userIdBig && user.role !== 'admin') {
-    res.status(403).json({ error: 'Forbidden' })
+    sendError(res, 403, 'Forbidden')
     return
   }
   await prisma.posts.delete({ where: { id: BigInt(id) } })
   await delCache('news:public')
   await delCache(`news:mine:${user.userId}`)
   notifyUser(user.userId, 'post:deleted', { id })
-  res.status(204).end()
+  sendSuccess(res, 200, 'News deleted', null)
 }

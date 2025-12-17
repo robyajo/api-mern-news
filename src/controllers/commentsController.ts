@@ -3,6 +3,7 @@ import { prisma } from '../prisma'
 import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 import { notifyUser } from '../realtime'
+import { sendSuccess, sendError } from '../response'
 
 const createSchema = z.object({
   postId: z.number(),
@@ -22,14 +23,15 @@ const serializeBigInt = (data: any): any => {
 export async function create(req: Request, res: Response) {
   const parsed = createSchema.safeParse(req.body)
   if (!parsed.success) {
-    res.status(400).json({ error: 'Invalid input' })
+    const errors = parsed.error.flatten().fieldErrors
+    sendError(res, 422, 'Validation error', errors)
     return
   }
   const user = (req as any).user as { userId: string; role: string }
   const postIdBig = BigInt(parsed.data.postId)
   const post = await prisma.posts.findUnique({ where: { id: postIdBig } })
   if (!post) {
-    res.status(404).json({ error: 'Post not found' })
+    sendError(res, 404, 'Post not found')
     return
   }
   const comment = await prisma.comments.create({
@@ -50,6 +52,6 @@ export async function create(req: Request, res: Response) {
   const ownerId = post.user_id.toString()
   notifyUser(ownerId, 'comment:created', serializeBigInt({ postId: post.id.toString(), comment }))
   notifyUser(user.userId, 'comment:created', serializeBigInt({ postId: post.id.toString(), comment }))
-  res.status(201).json(serializeBigInt(comment))
+  sendSuccess(res, 201, 'Comment created', serializeBigInt(comment))
 }
 

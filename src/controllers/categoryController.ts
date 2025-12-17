@@ -3,6 +3,7 @@ import { prisma } from '../prisma'
 import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 import slugify from 'slugify'
+import { sendSuccess, sendError } from '../response'
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -27,27 +28,28 @@ export async function list(req: Request, res: Response) {
     where: { status: 'active' },
     orderBy: { created_at: 'desc' }
   })
-  res.json(serializeBigInt(items))
+  sendSuccess(res, 200, 'List categories', serializeBigInt(items))
 }
 
 export async function getById(req: Request, res: Response) {
   const id = Number(req.params.id)
   if (!Number.isFinite(id)) {
-    res.status(400).json({ error: 'Invalid id' })
+    sendError(res, 400, 'Invalid id')
     return
   }
   const item = await prisma.categori_posts.findUnique({ where: { id: BigInt(id) } })
   if (!item) {
-    res.status(404).json({ error: 'Not found' })
+    sendError(res, 404, 'Not found')
     return
   }
-  res.json(serializeBigInt(item))
+  sendSuccess(res, 200, 'Category detail', serializeBigInt(item))
 }
 
 export async function create(req: Request, res: Response) {
   const parsed = createSchema.safeParse(req.body)
   if (!parsed.success) {
-    res.status(400).json({ error: 'Invalid input' })
+    const errors = parsed.error.flatten().fieldErrors
+    sendError(res, 422, 'Validation error', errors)
     return
   }
   const user = (req as any).user as { userId: string; role: string }
@@ -64,28 +66,29 @@ export async function create(req: Request, res: Response) {
       updated_at: new Date()
     }
   })
-  res.status(201).json(serializeBigInt(item))
+  sendSuccess(res, 201, 'Category created', serializeBigInt(item))
 }
 
 export async function update(req: Request, res: Response) {
   const id = Number(req.params.id)
   if (!Number.isFinite(id)) {
-    res.status(400).json({ error: 'Invalid id' })
+    sendError(res, 400, 'Invalid id')
     return
   }
   const parsed = updateSchema.safeParse(req.body)
   if (!parsed.success) {
-    res.status(400).json({ error: 'Invalid input' })
+    const errors = parsed.error.flatten().fieldErrors
+    sendError(res, 422, 'Validation error', errors)
     return
   }
   const user = (req as any).user as { userId: string; role: string }
   const existing = await prisma.categori_posts.findUnique({ where: { id: BigInt(id) } })
   if (!existing) {
-    res.status(404).json({ error: 'Not found' })
+    sendError(res, 404, 'Not found')
     return
   }
   if (existing.user_id.toString() !== user.userId && user.role !== 'admin') {
-    res.status(403).json({ error: 'Forbidden' })
+    sendError(res, 403, 'Forbidden')
     return
   }
   const data: any = {}
@@ -97,26 +100,26 @@ export async function update(req: Request, res: Response) {
   if (parsed.data.status !== undefined) data.status = parsed.data.status
   data.updated_at = new Date()
   const item = await prisma.categori_posts.update({ where: { id: BigInt(id) }, data })
-  res.json(serializeBigInt(item))
+  sendSuccess(res, 200, 'Category updated', serializeBigInt(item))
 }
 
 export async function remove(req: Request, res: Response) {
   const id = Number(req.params.id)
   if (!Number.isFinite(id)) {
-    res.status(400).json({ error: 'Invalid id' })
+    sendError(res, 400, 'Invalid id')
     return
   }
   const user = (req as any).user as { userId: string; role: string }
   const existing = await prisma.categori_posts.findUnique({ where: { id: BigInt(id) } })
   if (!existing) {
-    res.status(404).json({ error: 'Not found' })
+    sendError(res, 404, 'Not found')
     return
   }
   if (existing.user_id.toString() !== user.userId && user.role !== 'admin') {
-    res.status(403).json({ error: 'Forbidden' })
+    sendError(res, 403, 'Forbidden')
     return
   }
   await prisma.categori_posts.delete({ where: { id: BigInt(id) } })
-  res.status(204).end()
+  sendSuccess(res, 200, 'Category deleted', null)
 }
 

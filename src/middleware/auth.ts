@@ -1,15 +1,16 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
+import { sendError } from '../response'
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization
   if (!header || !header.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Unauthorized' })
+    sendError(res, 401, 'Unauthorized')
     return
   }
   const token = header.slice(7)
   const secret = process.env.JWT_SECRET
   if (!secret) {
-    res.status(500).json({ error: 'Server misconfigured' })
+    sendError(res, 500, 'Server misconfigured')
     return
   }
   try {
@@ -17,7 +18,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     ;(req as any).user = payload
     next()
   } catch {
-    res.status(401).json({ error: 'Invalid token' })
+    sendError(res, 401, 'Invalid token')
   }
 }
 

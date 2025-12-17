@@ -116,6 +116,58 @@ npm start
 
 Server akan berjalan di `http://localhost:4000`.
 
+### 7. Deployment ke Server (Production)
+
+Contoh tahapan deploy ke VPS/server Linux (Ubuntu):
+
+1. **Persiapan Server**
+
+   - Install Node.js (disarankan versi 18+).
+   - Pastikan database (PostgreSQL/MySQL) dan Redis sudah tersedia dan bisa diakses dari server.
+   - (Opsional) Pasang Nginx untuk reverse proxy.
+
+2. **Clone Project**
+
+   ```bash
+   git clone https://github.com/username/api-news.git
+   cd api-news/api-mern-news
+   npm install
+   ```
+
+3. **Konfigurasi Environment**
+
+   - Salin `.env.example` menjadi `.env`.
+   - Isi `PORT`, `JWT_SECRET`, `DATABASE_URL`, `SHADOW_DATABASE_URL`, `DATABASE_PROVIDER`, dan konfigurasi Redis sesuai environment production.
+
+4. **Migrasi Database & Generate Client**
+
+   ```bash
+   npm run prisma:migrate
+   npm run prisma:generate
+   ```
+
+5. **Build & Jalankan Aplikasi**
+
+   ```bash
+   npm run build
+   npm start
+   ```
+
+   Secara default server akan berjalan di `http://0.0.0.0:4000`.
+
+6. **Menjalankan dengan PM2 (Disarankan untuk Production)**
+
+   ```bash
+   npm install -g pm2
+   pm2 start dist/index.js --name api-news
+   pm2 save
+   pm2 startup
+   ```
+
+7. **Konfigurasi Reverse Proxy (Opsional, dengan Nginx)**
+   - Buat server block Nginx yang meneruskan request ke `http://localhost:4000`.
+   - Pastikan firewall membuka port HTTP/HTTPS dan reload Nginx setelah konfigurasi.
+
 ## 📚 Dokumentasi API
 
 Akses dokumentasi lengkap dan coba API langsung melalui Swagger UI:
