@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/auth";
 import {
+  listWithFilters,
   listMine,
   create,
   update,
@@ -18,6 +19,51 @@ export const postsRouter = Router();
 
 /**
  * @swagger
+ * /api/posts:
+ *   get:
+ *     summary: Get posts (current user or all for admin)
+ *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: title
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: tags
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: user_name
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of posts
+ *       401:
+ *         description: Unauthorized
+ */
+postsRouter.get("/", requireAuth, listWithFilters);
+
+/**
+ * @swagger
  * /api/posts/mine:
  *   get:
  *     summary: Get my posts
@@ -31,6 +77,8 @@ export const postsRouter = Router();
  *         description: Unauthorized
  */
 postsRouter.get("/mine", requireAuth, listMine);
+
+postsRouter.get("/", requireAuth, listWithFilters);
 
 /**
  * @swagger
@@ -121,4 +169,3 @@ postsRouter.put("/:id", requireAuth, update);
  *         description: Not found
  */
 postsRouter.delete("/:id", requireAuth, remove);
-

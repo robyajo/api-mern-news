@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import { specs } from "./swagger";
 import { authRouter } from "./routes/api/auth";
@@ -13,8 +14,22 @@ import { errorHandler } from "./middleware/error";
 
 export const app = express();
 
-app.use(cors());
-app.use(express.json());
+app.disable("x-powered-by");
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  })
+);
+
+const corsOrigin = process.env.CORS_ORIGIN || "*";
+app.use(
+  cors({
+    origin: corsOrigin,
+    credentials: true,
+    exposedHeaders: ["x-access-token", "x-access-expires-at"],
+  })
+);
+app.use(express.json({ limit: "1mb" }));
 app.use(visitorCounter);
 
 app.use(

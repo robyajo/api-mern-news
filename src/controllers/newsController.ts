@@ -14,6 +14,19 @@ const createSchema = z.object({
   category_name: z.string().optional(),
 });
 
+const listQuerySchema = z.object({
+  page: z.string().optional(),
+  pageSize: z.string().optional(),
+  title: z.string().optional(),
+  status: z.string().optional(),
+  created_from: z.string().optional(),
+  created_to: z.string().optional(),
+  tags: z.string().optional(),
+  category_slug: z.string().optional(),
+  user_id: z.string().optional(),
+  user_name: z.string().optional(),
+});
+
 const serializeBigInt = (data: any): any => {
   return JSON.parse(
     JSON.stringify(data, (_, v) => (typeof v === "bigint" ? v.toString() : v))
@@ -22,29 +35,190 @@ const serializeBigInt = (data: any): any => {
 
 const VIEW_IP_TTL_SECONDS = 2 * 60 * 60;
 
-// Endpoint publik: list semua berita yang sudah berstatus published
-export async function listPublic(_req: Request, res: Response) {
-  const cacheKey = "news:public";
+export async function listWithFilters(req: Request, res: Response) {
+  const parsed = listQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    const errors = parsed.error.flatten().fieldErrors;
+    sendError(res, 400, "Invalid query", errors);
+    return;
+  }
+  const {
+    page,
+    pageSize,
+    title,
+    status,
+    created_from,
+    created_to,
+    tags,
+    user_id,
+    user_name,
+  } = parsed.data;
+  const pageNumber = Number.isFinite(Number(page))
+    ? Math.max(Number(page), 1)
+    : 1;
+  const sizeNumber = Number.isFinite(Number(pageSize))
+    ? Math.min(Math.max(Number(pageSize), 1), 100)
+    : 10;
+  const where: any = {};
+  const user = (req as any).user as
+    | { userId: string; role: string }
+    | undefined;
+  if (user) {
+    if (user.role !== "admin") {
+      where.user_id = BigInt(user.userId);
+    } else if (user_id) {
+      const idNum = Number(user_id);
+      if (Number.isFinite(idNum) && idNum > 0) {
+        where.user_id = BigInt(idNum);
+      }
+    }
+  }
+  if (title) {
+    const normalizedTitle = title.trim();
+    if (normalizedTitle) {
+      where.name = { contains: normalizedTitle, mode: "insensitive" };
+    }
+  }
+  if (status) {
+    where.status = status;
+  }
+  if (created_from || created_to) {
+    where.created_at = {};
+    if (created_from) {
+      const from = new Date(created_from);
+      if (!Number.isNaN(from.getTime())) {
+        where.created_at.gte = from;
+      }
+    }
+    if (created_to) {
+      const to = new Date(created_to);
+      if (!Number.isNaN(to.getTime())) {
+        where.created_at.lte = to;
+      }
+    }
+  }
+  if (user && user.role === "admin" && user_name) {
+    const normalizedUserName = user_name.trim();
+    if (normalizedUserName) {
+      where.users = {
+        name: { contains: normalizedUserName, mode: "insensitive" },
+      };
+    }
+  }
+  if (tags) {
+    const tagList = tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    if (tagList.length > 0) {
+      where.OR = tagList.map((tag) => ({
+        tags: { contains: tag, mode: "insensitive" as const },
+      }));
+    }
+  }
+  const [items, total] = await Promise.all([
+    prisma.posts.findMany({
+      where,
+      orderBy: { created_at: "desc" },
+      skip: (pageNumber - 1) * sizeNumber,
+      take: sizeNumber,
+      include: {
+        users: { select: { name: true } },
+        categori_posts: { select: { id: true, name: true, slug: true } },
+        comments: {
+          orderBy: { created_at: "desc" },
+          include: {
+            users: { select: { name: true } },
+          },
+        },
+      },
+    }),
+    prisma.posts.count({ where }),
+  ]);
+  const payload = {
+    items: serializeBigInt(items),
+    pagination: {
+      page: pageNumber,
+      pageSize: sizeNumber,
+      total,
+      totalPages: total > 0 ? Math.ceil(total / sizeNumber) : 0,
+    },
+  };
+  sendSuccess(res, 200, "List posts", payload);
+}
+
+// Endpoint publik: list semua berita yang sudah berstatus published (paginate + filter)
+export async function listPublic(req: Request, res: Response) {
+  const parsed = listQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    const errors = parsed.error.flatten().fieldErrors;
+    sendError(res, 400, "Invalid query", errors);
+    return;
+  }
+  const { page, pageSize, title, tags, category_slug } = parsed.data;
+  const pageNumber = Number.isFinite(Number(page))
+    ? Math.max(Number(page), 1)
+    : 1;
+  const sizeNumber = Number.isFinite(Number(pageSize))
+    ? Math.min(Math.max(Number(pageSize), 1), 100)
+    : 10;
+  const where: any = { status: "published" };
+  if (title) {
+    const normalizedTitle = title.trim();
+    if (normalizedTitle) {
+      where.name = { contains: normalizedTitle, mode: "insensitive" };
+    }
+  }
+  if (category_slug) {
+    where.categori_posts = { slug: category_slug };
+  }
+  if (tags) {
+    const tagList = tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    if (tagList.length > 0) {
+      where.OR = tagList.map((tag) => ({
+        tags: { contains: tag, mode: "insensitive" as const },
+      }));
+    }
+  }
+  const cacheKey = `news:public:${pageNumber}:${sizeNumber}:${title || ""}:${
+    category_slug || ""
+  }:${tags || ""}`;
   const cached = await getCache(cacheKey);
   if (cached) {
     sendSuccess(res, 200, "List public news", cached);
     return;
   }
-  const items = await prisma.posts.findMany({
-    where: { status: "published" },
-    orderBy: { created_at: "desc" },
-    include: {
-      users: { select: { name: true } },
-      categori_posts: { select: { id: true, name: true, slug: true } },
-      comments: {
-        orderBy: { created_at: "desc" },
-        include: {
-          users: { select: { name: true } },
+  const [items, total] = await Promise.all([
+    prisma.posts.findMany({
+      where,
+      orderBy: { created_at: "desc" },
+      skip: (pageNumber - 1) * sizeNumber,
+      take: sizeNumber,
+      include: {
+        users: { select: { name: true } },
+        categori_posts: { select: { id: true, name: true, slug: true } },
+        comments: {
+          orderBy: { created_at: "desc" },
+          include: {
+            users: { select: { name: true } },
+          },
         },
       },
+    }),
+    prisma.posts.count({ where }),
+  ]);
+  const payload = {
+    items: serializeBigInt(items),
+    pagination: {
+      page: pageNumber,
+      pageSize: sizeNumber,
+      total,
+      totalPages: total > 0 ? Math.ceil(total / sizeNumber) : 0,
     },
-  });
-  const payload = serializeBigInt(items);
+  };
   await setCache(cacheKey, payload, 60);
   sendSuccess(res, 200, "List public news", payload);
 }
@@ -134,20 +308,96 @@ export async function getBySlug(req: Request, res: Response) {
   sendSuccess(res, 200, "News detail", serializeBigInt(item));
 }
 
-// Endpoint terproteksi (requireAuth): list berita milik user yang sedang login
 export async function listMine(req: Request, res: Response) {
   const user = (req as any).user as { userId: string; role: string };
-  const cacheKey = `news:mine:${user.userId}`;
+  const parsed = listQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    const errors = parsed.error.flatten().fieldErrors;
+    sendError(res, 400, "Invalid query", errors);
+    return;
+  }
+  const { page, pageSize } = parsed.data;
+  const pageNumber = Number.isFinite(Number(page))
+    ? Math.max(Number(page), 1)
+    : 1;
+  const sizeNumber = Number.isFinite(Number(pageSize))
+    ? Math.min(Math.max(Number(pageSize), 1), 100)
+    : 10;
+  const { title, status, created_from, created_to, tags } = parsed.data;
+  const where: any = { user_id: BigInt(user.userId) };
+  if (status) {
+    where.status = status;
+  }
+  if (title) {
+    const normalizedTitle = title.trim();
+    if (normalizedTitle) {
+      where.name = { contains: normalizedTitle, mode: "insensitive" };
+    }
+  }
+  if (created_from || created_to) {
+    where.created_at = {};
+    if (created_from) {
+      const from = new Date(created_from);
+      if (!Number.isNaN(from.getTime())) {
+        where.created_at.gte = from;
+      }
+    }
+    if (created_to) {
+      const to = new Date(created_to);
+      if (!Number.isNaN(to.getTime())) {
+        where.created_at.lte = to;
+      }
+    }
+  }
+  if (tags) {
+    const tagList = tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    if (tagList.length > 0) {
+      where.OR = tagList.map((tag) => ({
+        tags: { contains: tag, mode: "insensitive" as const },
+      }));
+    }
+  }
+  const cacheKey = `news:mine:${user.userId}:${pageNumber}:${sizeNumber}:${
+    title || ""
+  }:${where.status || ""}:${created_from || ""}:${created_to || ""}:${
+    tags || ""
+  }`;
   const cached = await getCache(cacheKey);
   if (cached) {
     sendSuccess(res, 200, "List my news", cached);
     return;
   }
-  const items = await prisma.posts.findMany({
-    where: { user_id: BigInt(user.userId) },
-    orderBy: { created_at: "desc" },
-  });
-  const payload = serializeBigInt(items);
+  const [items, total] = await Promise.all([
+    prisma.posts.findMany({
+      where,
+      orderBy: { created_at: "desc" },
+      skip: (pageNumber - 1) * sizeNumber,
+      take: sizeNumber,
+      include: {
+        users: { select: { name: true } },
+        categori_posts: { select: { id: true, name: true, slug: true } },
+        comments: {
+          orderBy: { created_at: "desc" },
+          include: {
+            users: { select: { name: true } },
+          },
+        },
+      },
+    }),
+    prisma.posts.count({ where }),
+  ]);
+  const payload = {
+    items: serializeBigInt(items),
+    pagination: {
+      page: pageNumber,
+      pageSize: sizeNumber,
+      total,
+      totalPages: total > 0 ? Math.ceil(total / sizeNumber) : 0,
+    },
+  };
   await setCache(cacheKey, payload, 60);
   sendSuccess(res, 200, "List my news", payload);
 }

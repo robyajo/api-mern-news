@@ -6,6 +6,8 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { sendSuccess, sendError } from "../response";
 
+export const ACCESS_TOKEN_EXPIRES_IN_SECONDS = 7 * 24 * 60 * 60;
+
 const registerSchema = z.object({
   email: z
     .string({ required_error: "Email wajib diisi" })
@@ -96,7 +98,7 @@ export async function login(req: Request, res: Response) {
     sendError(res, 500, "Server misconfigured");
     return;
   }
-  const accessExpiresInSeconds = 7 * 24 * 60 * 60;
+  const accessExpiresInSeconds = ACCESS_TOKEN_EXPIRES_IN_SECONDS;
   const accessExpiresAt = new Date(
     Date.now() + accessExpiresInSeconds * 1000
   ).toISOString();
@@ -176,7 +178,7 @@ export async function refreshToken(req: Request, res: Response) {
       sendError(res, 401, "Invalid refresh token");
       return;
     }
-    const accessExpiresInSeconds = 7 * 24 * 60 * 60;
+    const accessExpiresInSeconds = ACCESS_TOKEN_EXPIRES_IN_SECONDS;
     const accessExpiresAt = new Date(
       Date.now() + accessExpiresInSeconds * 1000
     ).toISOString();

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import {
   register,
   login,
@@ -7,6 +8,13 @@ import {
   refreshToken,
 } from "../../controllers/authController";
 import { requireAuth } from "../../middleware/auth";
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 export const authRouter = Router();
 
@@ -50,7 +58,7 @@ export const authRouter = Router();
  *       409:
  *         description: Email already used
  */
-authRouter.post("/register", register);
+authRouter.post("/register", authLimiter, register);
 
 /**
  * @swagger
@@ -79,7 +87,7 @@ authRouter.post("/register", register);
  *       401:
  *         description: Invalid credentials
  */
-authRouter.post("/login", login);
+authRouter.post("/login", authLimiter, login);
 
 /**
  * @swagger
@@ -138,4 +146,4 @@ authRouter.post("/logout", requireAuth, logout);
  *       422:
  *         description: Validation error
  */
-authRouter.post("/refresh", refreshToken);
+authRouter.post("/refresh", authLimiter, refreshToken);
