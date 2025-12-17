@@ -1,50 +1,43 @@
-import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { listPublic, listMine, create, update, remove } from '../controllers/newsController'
+import { Router } from "express";
+import { requireAuth } from "../../middleware/auth";
+import {
+  listMine,
+  create,
+  update,
+  remove,
+} from "../../controllers/newsController";
 
-export const newsRouter = Router()
+export const postsRouter = Router();
 
 /**
  * @swagger
  * tags:
- *   name: News
- *   description: News management
+ *   name: Posts
+ *   description: Posts management (authenticated)
  */
 
 /**
  * @swagger
- * /news:
+ * /api/posts/mine:
  *   get:
- *     summary: Get public news
- *     tags: [News]
- *     responses:
- *       200:
- *         description: List of news
- */
-newsRouter.get('/', listPublic)
-
-/**
- * @swagger
- * /news/mine:
- *   get:
- *     summary: Get my news
- *     tags: [News]
+ *     summary: Get my posts
+ *     tags: [Posts]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of user's news
+ *         description: List of user's posts
  *       401:
  *         description: Unauthorized
  */
-newsRouter.get('/mine', requireAuth, listMine)
+postsRouter.get("/mine", requireAuth, listMine);
 
 /**
  * @swagger
- * /news:
+ * /api/posts:
  *   post:
- *     summary: Create news
- *     tags: [News]
+ *     summary: Create post
+ *     tags: [Posts]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -71,14 +64,14 @@ newsRouter.get('/mine', requireAuth, listMine)
  *       401:
  *         description: Unauthorized
  */
-newsRouter.post('/', requireAuth, create)
+postsRouter.post("/", requireAuth, create);
 
 /**
  * @swagger
- * /news/{id}:
+ * /api/posts/{id}:
  *   put:
- *     summary: Update news
- *     tags: [News]
+ *     summary: Update post
+ *     tags: [Posts]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -105,14 +98,14 @@ newsRouter.post('/', requireAuth, create)
  *       404:
  *         description: Not found
  */
-newsRouter.put('/:id', requireAuth, update)
+postsRouter.put("/:id", requireAuth, update);
 
 /**
  * @swagger
- * /news/{id}:
+ * /api/posts/{id}:
  *   delete:
- *     summary: Delete news
- *     tags: [News]
+ *     summary: Delete post
+ *     tags: [Posts]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -127,4 +120,5 @@ newsRouter.put('/:id', requireAuth, update)
  *       404:
  *         description: Not found
  */
-newsRouter.delete('/:id', requireAuth, remove)
+postsRouter.delete("/:id", requireAuth, remove);
+

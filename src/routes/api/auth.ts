@@ -5,8 +5,8 @@ import {
   me,
   logout,
   refreshToken,
-} from "../controllers/authController";
-import { requireAuth } from "../middleware/auth";
+} from "../../controllers/authController";
+import { requireAuth } from "../../middleware/auth";
 
 export const authRouter = Router();
 
@@ -19,7 +19,7 @@ export const authRouter = Router();
 
 /**
  * @swagger
- * /auth/register:
+ * /api/auth/register:
  *   post:
  *     summary: Register a new user
  *     tags: [Auth]
@@ -54,7 +54,7 @@ authRouter.post("/register", register);
 
 /**
  * @swagger
- * /auth/login:
+ * /api/auth/login:
  *   post:
  *     summary: Login user
  *     tags: [Auth]
@@ -83,7 +83,7 @@ authRouter.post("/login", login);
 
 /**
  * @swagger
- * /auth/me:
+ * /api/auth/me:
  *   get:
  *     summary: Get current authenticated user
  *     tags: [Auth]
@@ -99,7 +99,7 @@ authRouter.get("/me", requireAuth, me);
 
 /**
  * @swagger
- * /auth/logout:
+ * /api/auth/logout:
  *   post:
  *     summary: Logout current user (client should delete token)
  *     tags: [Auth]
@@ -115,7 +115,7 @@ authRouter.post("/logout", requireAuth, logout);
 
 /**
  * @swagger
- * /auth/refresh:
+ * /api/auth/refresh:
  *   post:
  *     summary: Refresh access token using refresh token
  *     tags: [Auth]

@@ -1,30 +1,33 @@
-import express from 'express'
-import cors from 'cors'
-import swaggerUi from 'swagger-ui-express'
-import { specs } from './swagger'
-import { authRouter } from './routes/auth'
-import { newsRouter } from './routes/news'
-import { commentsRouter } from './routes/comments'
-import { postsRouter } from './routes/posts'
-import { categoriesRouter } from './routes/categories'
-import { errorHandler } from './middleware/error'
+import express from "express";
+import cors from "cors";
+import swaggerUi from "swagger-ui-express";
+import { specs } from "./swagger";
+import { authRouter } from "./routes/api/auth";
+import { postsRouter } from "./routes/api/posts";
+import { categoriesRouter } from "./routes/api/categories";
+import { commentsRouter } from "./routes/api/comments";
+import { publicPostsRouter } from "./routes/api/public/posts";
+import { publicCategoriesRouter } from "./routes/api/public/categories";
+import { visitorCounter } from "./middleware/visitor";
+import { errorHandler } from "./middleware/error";
 
-export const app = express()
+export const app = express();
 
-app.use(cors())
-app.use(express.json())
+app.use(cors());
+app.use(express.json());
+app.use(visitorCounter);
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, { explorer: true }))
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(specs, { explorer: true })
+);
 
-const apiRouter = express.Router()
-apiRouter.use('/auth', authRouter)
-apiRouter.use('/posts', postsRouter)
-apiRouter.use('/categories', categoriesRouter)
-apiRouter.use('/comments', commentsRouter)
-app.use('/api/v1', apiRouter)
+app.use("/api/auth", authRouter);
+app.use("/api/posts", postsRouter);
+app.use("/api/categories", categoriesRouter);
+app.use("/api/comments", commentsRouter);
+app.use("/api/public/posts", publicPostsRouter);
+app.use("/api/public/categories", publicCategoriesRouter);
 
-app.use('/auth', authRouter)       // legacy
-app.use('/news', newsRouter)       // legacy
-app.use('/comments', commentsRouter) // legacy
-
-app.use(errorHandler)
+app.use(errorHandler);

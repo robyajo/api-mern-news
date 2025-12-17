@@ -142,7 +142,7 @@ export async function me(req: Request, res: Response) {
 }
 
 export async function logout(req: Request, res: Response) {
-  sendSuccess(res, 200, "Logged out successfully", null);
+  sendSuccess(res, 200, "Logout berhasil", null);
 }
 
 export async function refreshToken(req: Request, res: Response) {

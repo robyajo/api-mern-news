@@ -198,6 +198,8 @@ api-news/
 
 - **Type Check**: `npm run typecheck`
 - **Database Studio**: `npm run prisma:studio` (GUI untuk melihat data database)
+- **Database Seed**: `npm run db:seed` (menjalankan script `prisma/seed.ts` untuk mengisi data awal)
+- **Reset Database + Seed Ulang**: `npm run db:reset` (drop + migrate ulang database kemudian menjalankan seed)
 
 ---
 

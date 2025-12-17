@@ -1,19 +1,25 @@
-import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { list, getById, create, update, remove } from '../controllers/categoryController'
+import { Router } from "express";
+import { requireAuth } from "../../middleware/auth";
+import {
+  list,
+  getById,
+  create,
+  update,
+  remove,
+} from "../../controllers/categoryController";
 
-export const categoriesRouter = Router()
+export const categoriesRouter = Router();
 
 /**
  * @swagger
  * tags:
  *   name: Categories
- *   description: Categories management
+ *   description: Categories management (authenticated)
  */
 
 /**
  * @swagger
- * /api/v1/categories:
+ * /api/categories:
  *   get:
  *     summary: Get active categories
  *     tags: [Categories]
@@ -21,11 +27,11 @@ export const categoriesRouter = Router()
  *       200:
  *         description: List of categories
  */
-categoriesRouter.get('/', list)
+categoriesRouter.get("/", list);
 
 /**
  * @swagger
- * /api/v1/categories/{id}:
+ * /api/categories/{id}:
  *   get:
  *     summary: Get category detail
  *     tags: [Categories]
@@ -41,11 +47,11 @@ categoriesRouter.get('/', list)
  *       404:
  *         description: Not found
  */
-categoriesRouter.get('/:id', getById)
+categoriesRouter.get("/:id", getById);
 
 /**
  * @swagger
- * /api/v1/categories:
+ * /api/categories:
  *   post:
  *     summary: Create category
  *     tags: [Categories]
@@ -73,11 +79,11 @@ categoriesRouter.get('/:id', getById)
  *       401:
  *         description: Unauthorized
  */
-categoriesRouter.post('/', requireAuth, create)
+categoriesRouter.post("/", requireAuth, create);
 
 /**
  * @swagger
- * /api/v1/categories/{id}:
+ * /api/categories/{id}:
  *   put:
  *     summary: Update category
  *     tags: [Categories]
@@ -108,11 +114,11 @@ categoriesRouter.post('/', requireAuth, create)
  *       404:
  *         description: Not found
  */
-categoriesRouter.put('/:id', requireAuth, update)
+categoriesRouter.put("/:id", requireAuth, update);
 
 /**
  * @swagger
- * /api/v1/categories/{id}:
+ * /api/categories/{id}:
  *   delete:
  *     summary: Delete category
  *     tags: [Categories]
@@ -130,4 +136,5 @@ categoriesRouter.put('/:id', requireAuth, update)
  *       404:
  *         description: Not found
  */
-categoriesRouter.delete('/:id', requireAuth, remove)
+categoriesRouter.delete("/:id", requireAuth, remove);
+

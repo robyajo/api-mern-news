@@ -11,12 +11,8 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:4000/api/v1',
-        description: 'V1 API Server'
-      },
-      {
         url: 'http://localhost:4000',
-        description: 'Root Server'
+        description: 'API Server'
       },
     ],
     components: {
@@ -35,8 +31,8 @@ const options = {
     ],
   },
   apis: [
-    path.join(__dirname, './routes/*.ts'),
-    path.join(__dirname, './controllers/*.ts')
+    path.join(__dirname, "./routes/**/*.ts"),
+    path.join(__dirname, "./controllers/*.ts"),
   ], 
 }
 

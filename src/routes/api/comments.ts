@@ -1,19 +1,19 @@
-import { Router } from 'express'
-import { requireAuth } from '../middleware/auth'
-import { create } from '../controllers/commentsController'
+import { Router } from "express";
+import { requireAuth } from "../../middleware/auth";
+import { create } from "../../controllers/commentsController";
 
-export const commentsRouter = Router()
+export const commentsRouter = Router();
 
 /**
  * @swagger
  * tags:
  *   name: Comments
- *   description: Comments management
+ *   description: Comments management (authenticated)
  */
 
 /**
  * @swagger
- * /comments:
+ * /api/comments:
  *   post:
  *     summary: Create comment on a post
  *     tags: [Comments]
@@ -47,5 +47,5 @@ export const commentsRouter = Router()
  *       404:
  *         description: Post not found
  */
-commentsRouter.post('/', requireAuth, create)
+commentsRouter.post("/", requireAuth, create);
 
