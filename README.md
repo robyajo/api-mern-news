@@ -164,6 +164,30 @@ Contoh tahapan deploy ke VPS/server Linux (Ubuntu):
    pm2 startup
    ```
 
+   Untuk setup yang lebih rapi (terutama jika satu server menjalankan beberapa app), gunakan file `ecosystem.config.js` di root project:
+
+   ```js
+   module.exports = {
+     apps: [
+       {
+         name: "api-news",
+         script: "dist/index.js",
+         env: {
+           NODE_ENV: "production",
+           PORT: 4000,
+         },
+       },
+     ],
+   };
+   ```
+
+   Jalankan dengan:
+
+   ```bash
+   pm2 start ecosystem.config.js
+   pm2 save
+   ```
+
 7. **Konfigurasi Reverse Proxy (Opsional, dengan Nginx)**
 
    - Contoh konfigurasi `server block` Nginx (misal domain `api.example.com`):
