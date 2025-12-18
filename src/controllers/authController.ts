@@ -2,23 +2,11 @@ import { Request, Response } from "express";
 import { prisma } from "../prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { sendSuccess, sendError } from "../response";
+import { registerSchema, loginSchema, refreshSchema } from "../schemas/auth";
 
 export const ACCESS_TOKEN_EXPIRES_IN_SECONDS = 7 * 24 * 60 * 60;
-
-const registerSchema = z.object({
-  email: z
-    .string({ required_error: "Email wajib diisi" })
-    .email("Format email tidak valid"),
-  name: z
-    .string({ required_error: "Nama wajib diisi" })
-    .min(1, "Nama wajib diisi"),
-  password: z
-    .string({ required_error: "Password wajib diisi" })
-    .min(4, "Password minimal 4 karakter"),
-});
 
 export async function register(req: Request, res: Response) {
   const parsed = registerSchema.safeParse(req.body);
@@ -53,21 +41,6 @@ export async function register(req: Request, res: Response) {
     role: user.role,
   });
 }
-
-const loginSchema = z.object({
-  email: z
-    .string({ required_error: "Email wajib diisi" })
-    .email("Format email tidak valid"),
-  password: z
-    .string({ required_error: "Password wajib diisi" })
-    .min(4, "Password minimal 4 karakter"),
-});
-
-const refreshSchema = z.object({
-  refreshToken: z
-    .string({ required_error: "Refresh token wajib diisi" })
-    .min(1, "Refresh token wajib diisi"),
-});
 
 export async function login(req: Request, res: Response) {
   const parsed = loginSchema.safeParse(req.body);

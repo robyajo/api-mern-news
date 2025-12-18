@@ -165,8 +165,32 @@ Contoh tahapan deploy ke VPS/server Linux (Ubuntu):
    ```
 
 7. **Konfigurasi Reverse Proxy (Opsional, dengan Nginx)**
-   - Buat server block Nginx yang meneruskan request ke `http://localhost:4000`.
-   - Pastikan firewall membuka port HTTP/HTTPS dan reload Nginx setelah konfigurasi.
+
+   - Contoh konfigurasi `server block` Nginx (misal domain `api.example.com`):
+
+   ```nginx
+   server {
+       listen 80;
+       server_name api.example.com;
+
+       # Redirect HTTP ke HTTPS (jika menggunakan SSL)
+       # return 301 https://$host$request_uri;
+
+       location / {
+           proxy_pass         http://127.0.0.1:4000;
+           proxy_http_version 1.1;
+           proxy_set_header   Upgrade $http_upgrade;
+           proxy_set_header   Connection "upgrade";
+           proxy_set_header   Host $host;
+           proxy_set_header   X-Real-IP $remote_addr;
+           proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header   X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
+
+   - Simpan file konfigurasi di `/etc/nginx/sites-available/api-news` lalu symlink ke `sites-enabled`.
+   - Jalankan `nginx -t` untuk memastikan konfigurasi valid dan `sudo systemctl reload nginx` untuk menerapkan.
 
 ## 📚 Dokumentasi API
 
